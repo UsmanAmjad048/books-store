@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     'users',
     'bookstore',
     'corsheaders',
-    'cart',
+    'cartitems',
     'rest_framework',
     'rest_framework.authtoken',
 

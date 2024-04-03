@@ -9,6 +9,7 @@ class Bookstore(models.Model):
     created_date = models.DateField(default=date.today)
     author = models.CharField(max_length=100)
     stock = models.IntegerField(default = 1)
+    category = models.CharField(max_length=100)
     price = models.IntegerField()
     image = models.ImageField(upload_to='cover_photo/', null=True, blank=True) 
     user = models.ForeignKey(User, on_delete=models.CASCADE)

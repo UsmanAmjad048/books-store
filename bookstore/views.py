@@ -17,12 +17,63 @@ from rest_framework import status
 from .authentication import CustomTokenAuthentication
 from django.shortcuts import get_object_or_404
 from rest_framework.parsers import MultiPartParser
-
+from django.db.models import Q
+import json
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 def books(request):
-    books = Bookstore.objects.all()
+    books_list = Bookstore.objects.all().order_by('-created_date')
+    paginator = Paginator(books_list, 5)  # Change 10 to the number of items per page you desire
+    page = request.GET.get('page')  # Get the current page number from the request
+    try:
+        books = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page.
+        books = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range (e.g. 9999), deliver last page of results.
+        books = paginator.page(paginator.num_pages)
     serializer = BooksSerializer(books, many=True)
-    return JsonResponse(serializer.data, safe=False)
+    return JsonResponse({
+        'count': paginator.count,
+        'num_pages': paginator.num_pages,
+        'current_page': books.number,
+        'next_page': books.next_page_number() if books.has_next() else None,
+        'previous_page': books.previous_page_number() if books.has_previous() else None,
+        'results': serializer.data
+    }, safe=False)
+
+@csrf_exempt
+def SearchBooksAPIView(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            query = data.get('query', '')  # Use get() method to avoid KeyError
+            books_list = Bookstore.objects.filter(title__icontains=query).order_by('-created_date')
+            paginator = Paginator(books_list, 5)  # Change 5 to the number of items per page you desire
+            page = request.GET.get('page')  # Get the current page number from the request
+            try:
+                books = paginator.page(page)
+            except PageNotAnInteger:
+                # If page is not an integer, deliver first page.
+                books = paginator.page(1)
+            except EmptyPage:
+                # If page is out of range (e.g. 9999), deliver last page of results.
+                books = paginator.page(paginator.num_pages)
+            serializer = BooksSerializer(books, many=True)
+            return JsonResponse({
+                'count': paginator.count,
+                'num_pages': paginator.num_pages,
+                'current_page': books.number,
+                'next_page': books.next_page_number() if books.has_next() else None,
+                'previous_page': books.previous_page_number() if books.has_previous() else None,
+                'results': serializer.data
+            }, safe=False)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)  # Return error response
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)  # Return method not allowed error
+
 
 def booksuserid(request, user_id, book_id):
     try:
@@ -52,25 +103,17 @@ class AddBooksView(APIView):
 
     def post(self, request):
         image_file = request.data.get('image')
-
-        # Remove the image key from the request data
         request_data = request.data.copy()
         del request_data['image']
 
-        # Validate the form with the remaining data
         form = AddBooksForm(request_data, request.FILES)
-        
+
         if form.is_valid():
-            # Save the book details
             book = form.save(commit=False)
             book.user = request.user
 
-            # Save the book object
             book.save()
 
-            # Here you can handle the image file as per your requirement
-            # For example, you can save it to a specific location or process it further
-            # For demonstration, let's assume you want to associate it with the saved book object
             if image_file:
                 book.image = image_file
                 book.save()
@@ -79,12 +122,13 @@ class AddBooksView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response({'errors': form.errors}, status=status.HTTP_400_BAD_REQUEST)
+
     def delete(self, request, user_id, book_id):
-            try:
-                book = Bookstore.objects.get(id=book_id)
-                if book.user != request.user:
-                    return JsonResponse({'error': 'You do not have permission to delete this book'}, status=403)
-                book.delete()
-                return JsonResponse({'message': 'Book deleted successfully'}, status=204)
-            except Bookstore.DoesNotExist:
-                return JsonResponse({'error': 'Book not found'}, status=404)
+        try:
+            book = Bookstore.objects.get(id=book_id)
+            if book.user != request.user:
+                return JsonResponse({'error': 'You do not have permission to delete this book'}, status=403)
+            book.delete()
+            return JsonResponse({'message': 'Book deleted successfully'}, status=204)
+        except Bookstore.DoesNotExist:
+            return JsonResponse({'error': 'Book not found'}, status=404)
