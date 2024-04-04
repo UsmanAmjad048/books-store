@@ -5,4 +5,4 @@ from .models import Bookstore
 class AddBooksForm(forms.ModelForm):
     class Meta:
         model = Bookstore
-        fields = ['title', 'description', 'author', 'category', 'stock', 'price', 'image']
+        fields = ['title', 'description', 'author', 'category', 'total_books','stock', 'price', 'image']

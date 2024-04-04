@@ -20,11 +20,15 @@ from rest_framework.parsers import MultiPartParser
 from django.db.models import Q
 import json
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from rest_framework.pagination import PageNumberPagination
+
 
 def books(request):
     books_list = Bookstore.objects.all().order_by('-created_date')
-    paginator = Paginator(books_list, 5)  # Change 10 to the number of items per page you desire
-    page = request.GET.get('page')  # Get the current page number from the request
+    # Change 10 to the number of items per page you desire
+    paginator = Paginator(books_list, 5)
+    # Get the current page number from the request
+    page = request.GET.get('page')
     try:
         books = paginator.page(page)
     except PageNotAnInteger:
@@ -43,15 +47,19 @@ def books(request):
         'results': serializer.data
     }, safe=False)
 
+
 @csrf_exempt
 def SearchBooksAPIView(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             query = data.get('query', '')  # Use get() method to avoid KeyError
-            books_list = Bookstore.objects.filter(title__icontains=query).order_by('-created_date')
-            paginator = Paginator(books_list, 5)  # Change 5 to the number of items per page you desire
-            page = request.GET.get('page')  # Get the current page number from the request
+            books_list = Bookstore.objects.filter(
+                title__icontains=query).order_by('-created_date')
+            # Change 5 to the number of items per page you desire
+            paginator = Paginator(books_list, 5)
+            # Get the current page number from the request
+            page = request.GET.get('page')
             try:
                 books = paginator.page(page)
             except PageNotAnInteger:
@@ -70,9 +78,11 @@ def SearchBooksAPIView(request):
                 'results': serializer.data
             }, safe=False)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)  # Return error response
+            # Return error response
+            return JsonResponse({'error': str(e)}, status=400)
     else:
-        return JsonResponse({'error': 'Method not allowed'}, status=405)  # Return method not allowed error
+        # Return method not allowed error
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
 def booksuserid(request, user_id, book_id):
@@ -82,6 +92,33 @@ def booksuserid(request, user_id, book_id):
         return JsonResponse(serializer.data)
     except Bookstore.DoesNotExist:
         return JsonResponse({'error': 'Book not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class DashBoardData(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:    
+            user_id = request.user.id
+            bookstores = Bookstore.objects.filter(user_id=user_id)            
+            total_sold = sum(bookstore.total_sold for bookstore in bookstores)
+            total_available = sum(bookstore.total_available for bookstore in bookstores)
+            total_earnings = sum(bookstore.total_earnings for bookstore in bookstores)
+
+            total_profit = total_earnings  
+
+            data = {
+                "total_sold": total_sold,
+                "total_available": total_available,
+                "total_earnings": total_earnings,
+                "total_profit": total_profit
+            }
+
+            return Response(data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class AddBooksView(APIView):
     authentication_classes = [CustomTokenAuthentication]
@@ -97,9 +134,26 @@ class AddBooksView(APIView):
             except Bookstore.DoesNotExist:
                 return JsonResponse({'error': 'Book not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            books = Bookstore.objects.filter(user=user_id)
-            serializer = BooksSerializer(books, many=True)
-            return Response(serializer.data)
+            search_query = request.GET.get('query')
+            if search_query:
+                books = Bookstore.objects.filter(
+                    user=user_id, title__icontains=search_query).order_by('-created_date')
+            else:
+                books = Bookstore.objects.filter(
+                    user=user_id).order_by('-created_date')
+
+            paginator = Paginator(books, 4)
+            page_number = request.GET.get('page')
+            page_obj = paginator.get_page(page_number)
+            serializer = BooksSerializer(page_obj, many=True)
+            return Response({
+                'count': paginator.count,
+                'num_pages': paginator.num_pages,
+                'current_page': page_obj.number,
+                'next_page': page_obj.next_page_number() if page_obj.has_next() else None,
+                'previous_page': page_obj.previous_page_number() if page_obj.has_previous() else None,
+                'results': serializer.data
+            })
 
     def post(self, request):
         image_file = request.data.get('image')

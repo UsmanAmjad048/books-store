@@ -7,6 +7,7 @@ urlpatterns = [
     path('search-books/', views.SearchBooksAPIView , name='search_books'),
     path('books/<int:user_id>/<int:book_id>/', views.booksuserid, name='booksid'),
     path('add-books/', views.AddBooksView.as_view(), name='add_books'),
+    path('dashboarddata/', views.DashBoardData.as_view(), name='dashboarddata'),
     path('getuserbooks/<int:user_id>/', views.AddBooksView.as_view(), name='get_user_books'),
     path('getuserbooksid/<int:user_id>/<int:book_id>/', views.AddBooksView.as_view(), name='get_user_book_by_id'),
 ]
