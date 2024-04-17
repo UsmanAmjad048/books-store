@@ -4,7 +4,7 @@ from ..models import CartItem, CartItemBook
 class CartItemBookSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItemBook
-        fields = ('book', 'quantity', 'total_price','booktitle')
+        exclude = ['cart_item']
 
 class CartItemSerializer(serializers.ModelSerializer):
     cart_items = CartItemBookSerializer(many=True)
@@ -19,3 +19,8 @@ class CartItemSerializer(serializers.ModelSerializer):
         for cart_item_data in cart_items_data:
             CartItemBook.objects.create(cart_item=cart_item, **cart_item_data)
         return cart_item
+    
+class CartItemBookSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = CartItemBook
+        fields = "__all__"

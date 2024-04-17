@@ -25,17 +25,13 @@ from rest_framework.pagination import PageNumberPagination
 
 def books(request):
     books_list = Bookstore.objects.all().order_by('-created_date')
-    # Change 10 to the number of items per page you desire
     paginator = Paginator(books_list, 5)
-    # Get the current page number from the request
     page = request.GET.get('page')
     try:
         books = paginator.page(page)
     except PageNotAnInteger:
-        # If page is not an integer, deliver first page.
         books = paginator.page(1)
     except EmptyPage:
-        # If page is out of range (e.g. 9999), deliver last page of results.
         books = paginator.page(paginator.num_pages)
     serializer = BooksSerializer(books, many=True)
     return JsonResponse({
@@ -53,20 +49,16 @@ def SearchBooksAPIView(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            query = data.get('query', '')  # Use get() method to avoid KeyError
+            query = data.get('query', '')
             books_list = Bookstore.objects.filter(
                 title__icontains=query).order_by('-created_date')
-            # Change 5 to the number of items per page you desire
             paginator = Paginator(books_list, 5)
-            # Get the current page number from the request
             page = request.GET.get('page')
             try:
                 books = paginator.page(page)
             except PageNotAnInteger:
-                # If page is not an integer, deliver first page.
                 books = paginator.page(1)
             except EmptyPage:
-                # If page is out of range (e.g. 9999), deliver last page of results.
                 books = paginator.page(paginator.num_pages)
             serializer = BooksSerializer(books, many=True)
             return JsonResponse({
@@ -78,10 +70,8 @@ def SearchBooksAPIView(request):
                 'results': serializer.data
             }, safe=False)
         except Exception as e:
-            # Return error response
             return JsonResponse({'error': str(e)}, status=400)
     else:
-        # Return method not allowed error
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
@@ -99,14 +89,16 @@ class DashBoardData(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:    
+        try:
             user_id = request.user.id
-            bookstores = Bookstore.objects.filter(user_id=user_id)            
+            bookstores = Bookstore.objects.filter(user_id=user_id)
             total_sold = sum(bookstore.total_sold for bookstore in bookstores)
-            total_available = sum(bookstore.total_available for bookstore in bookstores)
-            total_earnings = sum(bookstore.total_earnings for bookstore in bookstores)
+            total_available = sum(
+                bookstore.total_available for bookstore in bookstores)
+            total_earnings = sum(
+                bookstore.total_earnings for bookstore in bookstores)
 
-            total_profit = total_earnings  
+            total_profit = total_earnings
 
             data = {
                 "total_sold": total_sold,
@@ -137,7 +129,10 @@ class AddBooksView(APIView):
             search_query = request.GET.get('query')
             if search_query:
                 books = Bookstore.objects.filter(
-                    user=user_id, title__icontains=search_query).order_by('-created_date')
+                    Q(user=user_id) &
+                    (Q(id__icontains=search_query) |
+                     Q(title__icontains=search_query))
+                ).order_by('-created_date')
             else:
                 books = Bookstore.objects.filter(
                     user=user_id).order_by('-created_date')

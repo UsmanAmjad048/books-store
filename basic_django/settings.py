@@ -50,11 +50,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users',
     'bookstore',
+    'notification',
     'corsheaders',
     'cartitems',
     'rest_framework',
     'rest_framework.authtoken',
-
 ]
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:8080',

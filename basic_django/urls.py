@@ -23,7 +23,7 @@ urlpatterns = [
     path("", include("users.urls")),
     path("", include("bookstore.urls")),
     path("", include("cartitems.urls")),
-
+    path("", include("notification.urls")),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL,

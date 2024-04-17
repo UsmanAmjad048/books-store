@@ -18,6 +18,8 @@ class CartItemBook(models.Model):
     booktitle = models.CharField(max_length=255, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    seller_id = models.CharField(max_length= 20)
+
 
     def __str__(self):
         return f"{self.cart_item.user.username}'s cart item: {self.book.title}"
