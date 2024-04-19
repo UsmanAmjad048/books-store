@@ -11,7 +11,7 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('user', 'shipping_number', 'shipping_address', 'date_added', 'status', 'cart_items')
+        fields = ('id','user', 'shipping_number', 'shipping_address', 'date_added', 'status', 'cart_items')
 
     def create(self, validated_data):
         cart_items_data = validated_data.pop('cart_items')

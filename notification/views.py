@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from bookstore.authentication import CustomTokenAuthentication
 from cartitems.models import CartItem , CartItemBook
 from cartitems.api.serializer import CartItemBookSerializers , CartItemSerializer
+from django.db.models import Q
 
 class notificationApi(APIView):
     authentication_classes = [CustomTokenAuthentication]
@@ -41,14 +42,18 @@ class notificationorder(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, *args, **kwargs):
         try:
-            cart_items = CartItemBook.objects.filter(seller_id=request.user.id)
-            serializer = CartItemBookSerializers(cart_items, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            user = request.user
+            if user.is_superuser:  
+                cart_items = CartItemBook.objects.filter(seller_id=user.id)
+                serializer = CartItemBookSerializers(cart_items, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                cart_items = CartItem.objects.filter( (  Q(status="pending") | Q(status="dispatch") ))
+                serializer = CartItemSerializer(cart_items, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-
-
 class notiorderid(APIView):
 
     def get(self, request, *args, **kwargs):
@@ -61,12 +66,16 @@ class notiorderid(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
-class ordercomplete(APIView):
-
-    def get(self, request, *args, **kwargs):
+class OrderComplete(APIView):
+    
+    def post(self, request, *args, **kwargs):
         try:
-            cart_items = CartItemBook.objects.filter(seller_id=request.user.id)
-            serializer = CartItemBookSerializers(cart_items, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            cartorderid = kwargs.get('id')
+            data = request.data
+            status = data.get('status')
+            cart_items = CartItem.objects.filter(id=cartorderid)
+            for cart_item in cart_items:
+                cart_item.status = status
+                cart_item.save()
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            pass

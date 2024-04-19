@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from bookstore.authentication import CustomTokenAuthentication
 from bookstore.models import Bookstore
 from notification.api.serializers import NotificationSerializer
+from django.db.models import Q
 
 
 class AddCartAPIView(APIView):
@@ -67,7 +68,6 @@ class AddCartAPIView(APIView):
                     except Bookstore.DoesNotExist:
                         pass
 
-
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -80,7 +80,7 @@ class AddCartAPIView(APIView):
         """
         try:
             user = request.user
-            cart_items = CartItem.objects.filter(user=user, status="complete")
+            cart_items = CartItem.objects.filter(Q(user=user) & (Q(status="complete") | Q(status="cancel")))
             serializer = CartItemSerializer(cart_items, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
