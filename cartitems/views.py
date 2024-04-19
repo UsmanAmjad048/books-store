@@ -8,6 +8,7 @@ from bookstore.authentication import CustomTokenAuthentication
 from bookstore.models import Bookstore
 from notification.api.serializers import NotificationSerializer
 from django.db.models import Q
+ 
 
 
 class AddCartAPIView(APIView):
@@ -32,8 +33,8 @@ class AddCartAPIView(APIView):
             }, context={'request': request})
 
             if serializer.is_valid():
-                serializer.save(user=user)
-                print("workings saved")
+                data = serializer.save(user=user)
+                cartid = data.id
                 for cart_item_data in cart_items_data:
                     try:
                         book = Bookstore.objects.get(id=cart_item_data['book'])
@@ -48,6 +49,7 @@ class AddCartAPIView(APIView):
                                 'is_read': False,
                                 'purchaserid': user.id,
                                 'seller_id': cart_item_user_id,
+                                'cartitem_id': cartid
                             })
 
                             serializerfornotification.is_valid()
@@ -56,17 +58,19 @@ class AddCartAPIView(APIView):
                         except Exception as e:
                             pass
 
-                        user_order_noti = NotificationSerializer(data={
+                        
+                    except Bookstore.DoesNotExist:
+                        pass
+                user_order_noti = NotificationSerializer(data={
                             'title': "Your order preparation is starting. You will be notified of your order.",
                             'is_read': False,
                             'purchaserid': user.id,
                             'seller_id': user.id,
+                            'cartitem_id': cartid
                         })
 
-                        user_order_noti.is_valid(raise_exception=True)
-                        user_order_noti.save()
-                    except Bookstore.DoesNotExist:
-                        pass
+                user_order_noti.is_valid(raise_exception=True)
+                user_order_noti.save()
 
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             else:
@@ -80,7 +84,8 @@ class AddCartAPIView(APIView):
         """
         try:
             user = request.user
-            cart_items = CartItem.objects.filter(Q(user=user) & (Q(status="complete") | Q(status="cancel")))
+            cart_items = CartItem.objects.filter(
+                Q(user=user))
             serializer = CartItemSerializer(cart_items, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:

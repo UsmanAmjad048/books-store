@@ -9,6 +9,7 @@ from cartitems.models import CartItem ,CartItemBook
 
 
 class Notification(models.Model):
+    cartitem_id = models.ForeignKey(CartItem, on_delete=models.CASCADE, related_name='cartitems_id')
     title = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
