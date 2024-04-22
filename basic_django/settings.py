@@ -77,6 +77,13 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     # Add additional authentication backends if needed
 ]
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+EMAIL_HOST_USER = '57f3661a6feaae'
+EMAIL_HOST_PASSWORD = 'ad19332749ac98'
+EMAIL_PORT = '2525'
+
 ROOT_URLCONF = 'basic_django.urls'
 MEDIA_URL = '/media/'
 

@@ -14,7 +14,13 @@ from django.contrib.auth import logout
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
-# from django.contrib.auth.models import User
+from django.contrib.auth.models import User
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from bookstore.authentication import CustomTokenAuthentication
+from rest_framework.response import Response
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 
 def index(request):
     if request.user.is_superuser:
@@ -54,12 +60,12 @@ def custom_login(request):
             if user is not None:
                 login(request, user)
                 token, _ = Token.objects.get_or_create(user=user)
-                
-                return JsonResponse({'token': token.key , 'issuperuser':request.user.is_superuser , 'user_id':request.user.id})
+
+                return JsonResponse({'token': token.key , 'issuperuser':request.user.is_superuser , 'user_id':request.user.id , 'is_staff': request.user.is_staff})
             else:
                 return JsonResponse({'error': 'Invalid credentials'}, status=400)
         else:
-            return JsonResponse({'error': 'Form is not valid'}, status=400)
+            return JsonResponse({'error': 'your account not active or invalid username and password'}, status=400)
     else:
         form = AuthenticationForm()
         return JsonResponse({'form': form})
@@ -73,16 +79,51 @@ def custom_logout(request):
     logout(request)
     return JsonResponse({'message': 'You have been logged out successfully'})
 
+class InactiveUsersView(APIView):
+    authentication_classes = [CustomTokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
-# def promote_to_superuser(username):
-#     try:
-#         user = User.objects.get(username=username)
+    def get(self, request, *args, **kwargs):
+        if request.user.is_staff:
+            inactive_users = User.objects.filter(is_active=False)
+            serializer = UserSerializer(inactive_users, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'You are not a staff'}, status=status.HTTP_403_FORBIDDEN)
 
-#         user.is_superuser = True
-#         user.is_staff = True
-#         user.save()
+@csrf_exempt
+def activate_user(request, user_id):
+    if request.method == 'POST':
+        try:
+            user = User.objects.get(pk=user_id)
+            subject = 'Account Activation Notification'
+            message = render_to_string('email/account_activate_email.txt', {'username': user.username})
+            from_email = '1999usmanamjad@gmail.com'  
+            to_email = [user.email]
+            send_mail(subject, message, from_email, to_email)
+            user.is_active = True
+            user.save()
+            return JsonResponse({'message': 'User activated successfully'}, status=200)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User does not exist'}, status=404)
+    else:
+        return JsonResponse({'error': 'Only POST method is allowed'}, status=405)
 
-#         print(f"User '{username}' has been promoted to superuser.")
-#     except User.DoesNotExist:
-#         print(f"User '{username}' does not exist.")
+@csrf_exempt
+def delete_user(request, user_id):
+    if request.method == 'DELETE':
+        try:
+            user = User.objects.get(pk=user_id)
+            subject = 'Account Deletion Notification'
+            message = render_to_string('email/account_deleted_email.txt', {'username': user.username})
+            from_email = '1999usmanamjad@gmail.com'  
+            to_email = [user.email]
+            send_mail(subject, message, from_email, to_email)
+            user.delete()
+            return JsonResponse({'message': 'User deleted successfully'}, status=200)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User does not exist'}, status=404)
+    else:
+        return JsonResponse({'error': 'Only DELETE method is allowed'}, status=405) 
+
 

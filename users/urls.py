@@ -12,5 +12,7 @@ urlpatterns = [
     path('signup/', views.SignUpView.as_view(), name='signup'),
     path('login/', views.custom_login, name='login_view'),
     path('logout/', views.custom_logout, name='logout_view'),
-    # path('promote_to_superuser/', views.promote_to_superuser, name='promote_to_superuser'),
+    path('inactive_users/', views.InactiveUsersView.as_view(), name='inactive_users'),
+    path('activate_user/<int:user_id>/', views.activate_user, name='activate_user'),
+    path('delete_user/<int:user_id>/', views.delete_user, name='delete_user'),
 ]
